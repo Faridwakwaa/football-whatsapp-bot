@@ -8,7 +8,7 @@ const {
 } = require("@whiskeysockets/baileys");
 
 const pino = require("pino");
-
+const qrcode = require("qrcode-terminal");
 const API_KEY = process.env.API_FOOTBALL_KEY;
 
 // HTTP server untuk hosting
@@ -36,15 +36,19 @@ async function startBot() {
   const sock = makeWASocket({
     version,
     auth: state,
-    logger: pino({ level: "silent" }),
-    printQRInTerminal: true
-  });
+    logger: pino({ level: "silent" })
+});
 
   sock.ev.on("creds.update", saveCreds);
 
   sock.ev.on(
     "connection.update",
-    ({ connection, lastDisconnect }) => {
+    ({ connection, lastDisconnect, qr }) => {
+
+      if (qr) {
+        console.log("SCAN QR WHATSAPP:");
+        qrcode.generate(qr, { small: true });
+      }
 
       if (connection === "open") {
         console.log("BOT WHATSAPP TERHUBUNG!");
