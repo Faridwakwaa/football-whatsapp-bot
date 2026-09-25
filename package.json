@@ -1,0 +1,13 @@
+{
+  "name": "football-whatsapp-bot",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "@whiskeysockets/baileys": "^6.7.18",
+    "axios": "^1.7.9",
+    "pino": "^9.6.0"
+  }
+}
