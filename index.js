@@ -1,3 +1,5 @@
+const http = require("http");
+
 const {
   default: makeWASocket,
   useMultiFileAuthState,
@@ -5,15 +7,31 @@ const {
   fetchLatestBaileysVersion
 } = require("@whiskeysockets/baileys");
 
-const axios = require("axios");
 const pino = require("pino");
 
 const API_KEY = process.env.API_FOOTBALL_KEY;
 
-async function startBot() {
-  const { state, saveCreds } = await useMultiFileAuthState("auth");
+// HTTP server untuk hosting
+const PORT = process.env.PORT || 10000;
 
-  const { version } = await fetchLatestBaileysVersion();
+const server = http.createServer((req, res) => {
+  res.writeHead(200, {
+    "Content-Type": "text/plain"
+  });
+
+  res.end("Football WhatsApp Bot is running!");
+});
+
+server.listen(PORT, "0.0.0.0", () => {
+  console.log(`HTTP server berjalan di port ${PORT}`);
+});
+
+async function startBot() {
+  const { state, saveCreds } =
+    await useMultiFileAuthState("auth");
+
+  const { version } =
+    await fetchLatestBaileysVersion();
 
   const sock = makeWASocket({
     version,
@@ -24,40 +42,58 @@ async function startBot() {
 
   sock.ev.on("creds.update", saveCreds);
 
-  sock.ev.on("connection.update", ({ connection, lastDisconnect }) => {
-    if (connection === "open") {
-      console.log("BOT WHATSAPP TERHUBUNG!");
-    }
+  sock.ev.on(
+    "connection.update",
+    ({ connection, lastDisconnect }) => {
 
-    if (connection === "close") {
-      const code =
-        lastDisconnect?.error?.output?.statusCode;
+      if (connection === "open") {
+        console.log("BOT WHATSAPP TERHUBUNG!");
+      }
 
-      if (code !== DisconnectReason.loggedOut) {
-        console.log("Koneksi terputus, mencoba tersambung lagi...");
-        startBot();
-      } else {
-        console.log("WhatsApp ter-logout.");
+      if (connection === "close") {
+        const code =
+          lastDisconnect?.error?.output?.statusCode;
+
+        if (code !== DisconnectReason.loggedOut) {
+          console.log(
+            "Koneksi terputus, mencoba tersambung lagi..."
+          );
+
+          setTimeout(() => {
+            startBot();
+          }, 5000);
+
+        } else {
+          console.log("WhatsApp ter-logout.");
+        }
       }
     }
-  });
+  );
 
-  sock.ev.on("messages.upsert", async ({ messages }) => {
-    const msg = messages[0];
+  sock.ev.on(
+    "messages.upsert",
+    async ({ messages }) => {
 
-    if (!msg.message || msg.key.fromMe) return;
+      const msg = messages[0];
 
-    const jid = msg.key.remoteJid;
-    const text =
-      msg.message.conversation ||
-      msg.message.extendedTextMessage?.text ||
-      "";
+      if (!msg.message || msg.key.fromMe) {
+        return;
+      }
 
-    const command = text.trim().toLowerCase();
+      const jid = msg.key.remoteJid;
 
-    if (command === "/menu") {
-      await sock.sendMessage(jid, {
-        text:
+      const text =
+        msg.message.conversation ||
+        msg.message.extendedTextMessage?.text ||
+        "";
+
+      const command =
+        text.trim().toLowerCase();
+
+      if (command === "/menu") {
+
+        await sock.sendMessage(jid, {
+          text:
 `⚽ FOOTBALL BOT
 
 /menu
@@ -67,13 +103,16 @@ async function startBot() {
 /h2h Tim A vs Tim B
 
 Bot memberikan informasi dan statistik pertandingan.`
-      });
+        });
+      }
     }
-  });
+  );
 }
 
 if (!API_KEY) {
-  console.log("PERINGATAN: API_FOOTBALL_KEY belum dipasang.");
+  console.log(
+    "PERINGATAN: API_FOOTBALL_KEY belum dipasang."
+  );
 }
 
 startBot().catch(console.error);
